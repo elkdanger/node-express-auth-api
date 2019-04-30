@@ -1,6 +1,8 @@
 const express = require("express");
 const morgan = require("morgan");
 const helmet = require("helmet");
+const jwt = require("express-jwt");
+const jwksRsa = require("jwks-rsa");
 const authConfig = require("./auth_config.json");
 
 const app = express();
@@ -13,7 +15,20 @@ if (!authConfig.domain || !authConfig.audience) {
 app.use(morgan("dev"));
 app.use(helmet());
 
-app.get("/api/ping", (req, res) => {
+const checkJwt = jwt({
+  secret: jwksRsa.expressJwtSecret({
+    cache: true,
+    rateLimit: true,
+    jwksRequestsPerMinute: 5,
+    jwksUri: `https://${authConfig.domain}/.well-known/jwks.json`
+  }),
+
+  audience: authConfig.audience,
+  issuer: `https://${authConfig.domain}/`,
+  algorithm: ["RS256"]
+});
+
+app.get("/api/ping", checkJwt, (req, res) => {
   res.send({
     msg: "Your access token was successfully validated!"
   });
